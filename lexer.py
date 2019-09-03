@@ -20,10 +20,9 @@
 
 import re
 
-
+keywords = ['else', 'if', 'int', 'return', 'void', 'while']
 def lexer(filename):
     inputFile = open(filename, 'r')
-    keywords = ['else', 'if', 'int', 'return', 'void', 'while']
     lookAheadChars = ['<', '>', '=', '/', '*', '!']
     validChars = {'(': '(', ')': ')', '{': '{', '}': '}', '[': '[', ']': ']', ';': ';', '*': 'mulop', '/': 'mulop',
                   '+': 'addop', '-': 'addop', '<': 'relop', '<=': 'relop', '>': 'relop', '>=': 'relop', '==': 'relop',
@@ -39,18 +38,22 @@ def lexer(filename):
                 if (re.fullmatch(r'[a-zA-Z0-9]', char)):
                     currWord += char
                     if (deuceChars != ''):
-                        print(deuceChars)
+                        if comment is False:
+                            printChar = deuceChars.strip()
+                            if (printChar != ''):
+                                print(printChar)  # prints a single character
                         deuceChars = ''
                 else:
                     if currWord != '':
-                        print(currWord)
+                        if comment is False:
+                            determineCurrWord(currWord)
                         currWord = ''
                     if (char in lookAheadChars and deuceChars == ''):
                         deuceChars += char  # concatenate the first character
                     elif (char in lookAheadChars and deuceChars != ''):
                         deuceChars += char
                         if deuceChars in validTwoChars:
-                            if deuceChars == '/*':
+                            if comment is False and deuceChars == '/*':
                                 comment = True
                                 print('comment started')
                             elif deuceChars == '*/' and comment is True:
@@ -60,18 +63,39 @@ def lexer(filename):
                                 # todo goto for loop perhaps?
                                 print('in-line comment')
                             else:
-                                print(deuceChars)
+                                if comment is False:
+                                    printChar = deuceChars.strip()
+                                    if (printChar != ''):
+                                        print(printChar)
                             deuceChars = ''
                         else:
-                            print(deuceChars[0])
+                            if comment is False:
+                                printChar = deuceChars[0].strip()
+                                if (printChar != ''):
+                                    print(printChar)
                             deuceChars = deuceChars[1]
                     else:  # will take care of the spaces
                         if (deuceChars != ''):
-                            print(deuceChars)
+                            if comment is False:
+                                printChar = deuceChars.strip()
+                                if (printChar != ''):
+                                    print(printChar)
                             deuceChars = ''
+                        if comment is False:
                             print(char.strip())
             else:
-                print('Error: ' + currWord)
+                if comment is False:
+                    print('Error: ' + currWord + char)
+                currWord = ''
 
 
+def determineCurrWord(word):
+    try:
+        int(word)
+        print("Num: " + word)
+    except ValueError:
+        if word in keywords:
+            print("Keyword: " + word)
+        else:
+            print("ID: " + word)
 lexer('test')
