@@ -3,16 +3,16 @@ import sys
 
 keywords = ['else', 'if', 'int', 'return', 'void', 'while']
 
-
+tokenList = []
 def determineCurrWord(word):
     try:
         int(word)
-        print("Num: " + word)
+        tokenList.append("Num " + word)
     except ValueError:
         if word in keywords:
-            print("Keyword: " + word)
+            tokenList.append("Keyword " + word)
         else:
-            print("ID: " + word)
+            tokenList.append("ID " + word)
 
 
 def lexer(filename):
@@ -24,7 +24,7 @@ def lexer(filename):
         currWord = ''
         deuceChars = ''
         if line.strip() != '':
-            print("\nInput: " + line.strip())
+            # print("\nInput: " + line.strip())
             for char in line:
                 if (
                         re.fullmatch(r'[a-zA-Z0-9+\-*/<=>!;,(){}\[\]\s]*',
@@ -37,7 +37,7 @@ def lexer(filename):
                                 if (printChar == '!'):
                                     print("Error: " + printChar)
                                 elif (printChar != ''):
-                                    print(printChar)  # prints a single character
+                                    tokenList.append(printChar)  # prints a single character
                             deuceChars = ''
                     else:
                         if currWord != '':
@@ -61,7 +61,7 @@ def lexer(filename):
                                     if comment is False:
                                         printChar = deuceChars.strip()
                                         if (printChar != ''):
-                                            print(printChar)
+                                            tokenList.append(printChar)
                                 deuceChars = ''
                             else:
                                 if comment is False:
@@ -69,7 +69,7 @@ def lexer(filename):
                                     if printChar == '!':
                                         print('Error: ' + printChar)
                                     elif (printChar != ''):
-                                        print(printChar)
+                                        tokenList.append(printChar)
                                 deuceChars = deuceChars[1]
                         else:  # will take care of the spaces
                             if (deuceChars != ''):
@@ -78,14 +78,14 @@ def lexer(filename):
                                     if (printChar == '!'):
                                         print("Error: " + printChar)
                                     elif (printChar != ''):
-                                        print(printChar)
+                                        tokenList.append(printChar)
                                 deuceChars = ''
                             if comment is False:
                                 printChar = char.strip()
                                 if (printChar == '!'):
                                     print('Error: ' + printChar)
                                 elif (printChar != ''):
-                                    print(char.strip())
+                                    tokenList.append(char.strip())
                 else:
                     if comment is False:
                         print('Error: ' + currWord + char)
@@ -93,3 +93,4 @@ def lexer(filename):
 
 
 lexer(sys.argv[1])
+# print(tokenList)
