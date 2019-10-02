@@ -42,24 +42,30 @@ def program():
     return declarationList()
 
 
+# def declarationList():
+#     nextToken()  # first token
+#     if currToken[0] == "Keyword":
+#         if (currToken[1] == "int" or currToken[1] == "void"):
+#             if (declaration()):
+#                 if (fixedDecList()):
+#                     return True
+#     return False
 def declarationList():
-    nextToken()  # first token
-    if currToken[0] == "Keyword":
-        if (currToken[1] == "int" or currToken[1] == "void"):
-            if (declaration()):
-                if (fixedDecList()):
-                    return True
+    if declaration():
+        return fixedDecList()
     return False
+
 
 
 def fixedDecList():
     nextToken()
     if currToken[0] == "Keyword":
         if (currToken[1] == "int" or currToken[1] == "void"):
+            previousToken()
             if (declaration()):
-                fixedDecList()
-                return True
+                return fixedDecList()
     elif currToken[0] == "$":
+        previousToken()
         return True
     return False
     # empty state todo DO I need to look into follow sets?
@@ -67,15 +73,21 @@ def fixedDecList():
 
 def declaration():
     nextToken()
-    if (currToken[0] == 'ID'):
-        nextToken()
-        if (currToken[0] == '('):  # goes to params() if ( exist
-            if params():
+    if currToken[0] == "Keyword":
+        if currToken[1] == "int" or currToken[1] == "void":
+            nextToken()
+            if (currToken[0] == 'ID'):
                 nextToken()
-                if (currToken[0] == ')'):
-                    return compoundStmt()
-        elif currToken[0] == ";":
-            return True
+                if (currToken[0] == '('):  # goes to params() if ( exist
+                    previousToken()
+                    previousToken()
+                    previousToken()
+                    return funDeclaration()
+                elif currToken[0] == ";":
+                    previousToken()
+                    previousToken()
+                    previousToken()
+                    return varDeclaration()
     return False
 
 
@@ -99,6 +111,21 @@ def varDeclaration():
     return False
 
 
+def funDeclaration():
+    nextToken()
+    if currToken[0] == "Keyword":
+        if currToken[1] == "int" or currToken[1] == "void":
+            nextToken()
+            if currToken[0] == "ID":
+                nextToken()
+                if currToken[0] == "(":
+                    if params():
+                        nextToken()
+                        if currToken[0] == ")":
+                            return compoundStmt()
+    return False
+
+
 def params():
     nextToken()
     if currToken[0] == "Keyword":
@@ -116,6 +143,9 @@ def params():
     return False
 
 
+
+
+
 def param():
     nextToken()
     if currToken[0] == "Keyword":
@@ -125,7 +155,7 @@ def param():
                 nextToken()
                 if currToken[0] == "[":
                     nextToken()
-                    if currToken[0] == "}":
+                    if currToken[0] == "]":
                         return True
                 elif currToken[0] == ")" or currToken[0] == ",":
                     previousToken()
@@ -158,13 +188,15 @@ def compoundStmt():
 def localDeclaration():
     follow = ['(', ';', 'ID', 'Num', '{', 'Keyword', '}']
     Keywords = ['if', 'return', 'while']
-
     nextToken()
     if currToken[0] == "Keyword":
         if currToken[1] == "void" or currToken[1] == "int":
             previousToken()
             if varDeclaration():
                 return localDeclaration()
+        elif currToken[1] == "return" or currToken[1] == "if" or currToken[1] == "while":
+            previousToken()
+            return True
     elif currToken[0] in follow:
         if currToken[0] == "Keyword":
             if currToken[1] not in Keywords:  # todo check exception wif index[1] dne
@@ -299,14 +331,14 @@ def expression():
             previousToken()
             previousToken()
             return simpleExpression()
-    elif currToken[0] == '(' or currToken[0] == 'ID' or currToken[0] == 'Num':
+    elif currToken[0] == '(' or currToken[0] == 'Num':
         previousToken()
         return simpleExpression()
     return False
 
 
 def var():
-    follow = ['!=', ')', '*', '+', '-', '/', ';', '<', '<=', '=', '==', '>', '>=', ']']
+    follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '=', '==', '>', '>=', ']']
     nextToken()
     if currToken[0] == "ID":
         nextToken()
@@ -347,7 +379,7 @@ def additiveExpression():
 def fixedAddExp():
     follow = ['!=', ')', ',', ';', '<', '<=', '==', '>', '>=', ']']
     nextToken()
-    if currToken[0] == '+' or currToken == '-':
+    if currToken[0] == '+' or currToken[0] == '-':
         if term():
             return fixedAddExp()
     elif currToken[0] in follow:
@@ -413,7 +445,8 @@ def call():
 
 def args():
     nextToken()
-    if currToken[0] == '(' or currToken[0] == 'ID' or currToken[0] == 'NUM':
+    if currToken[0] == '(' or currToken[0] == 'ID' or currToken[0] == 'Num':
+        previousToken()
         return argList()
     elif currToken[0] == ')':
         previousToken()
@@ -433,6 +466,7 @@ def fixedArgList():
         if expression():
             return fixedArgList()
     elif currToken[0] == ')':
+        previousToken()
         return True
     return False
 
