@@ -42,14 +42,6 @@ def program():
     return declarationList()
 
 
-# def declarationList():
-#     nextToken()  # first token
-#     if currToken[0] == "Keyword":
-#         if (currToken[1] == "int" or currToken[1] == "void"):
-#             if (declaration()):
-#                 if (fixedDecList()):
-#                     return True
-#     return False
 def declarationList():
     if declaration():
         return fixedDecList()
@@ -279,6 +271,9 @@ def fixedSelStmt():
     if currToken[0] == "Keyword":
         if currToken[1] == "else":
             return statement()
+        elif currToken[1] in Keywords:
+            previousToken()
+            return True
     elif currToken[0] in follow:
         if currToken[0] == "Keyword":
             if currToken[1] not in Keywords:
@@ -317,16 +312,24 @@ def returnStmt():
 
 
 def expression():
+    follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '==', '>', '>=', ']']
     nextToken()
     if currToken[0] == "ID":
         nextToken()
-        if currToken[0] == "=":
+        if currToken[0] == "=" or currToken[0] == "[":
             previousToken()
             previousToken()
             if var():
                 nextToken()
                 if currToken[0] == "=":
                     return expression()
+                elif currToken[0] in follow:  # follow of Factor()
+                    previousToken()
+                    if fixedTerm():
+                        if fixedAddExp():
+                            return fixedSimExpr()
+
+
         else:
             previousToken()
             previousToken()
