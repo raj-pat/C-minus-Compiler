@@ -75,7 +75,7 @@ def declaration():
                     previousToken()
                     previousToken()
                     return funDeclaration()
-                elif currToken[0] == ";":
+                elif currToken[0] == ";" or currToken[0] == '[':
                     previousToken()
                     previousToken()
                     previousToken()
@@ -328,8 +328,6 @@ def expression():
                     if fixedTerm():
                         if fixedAddExp():
                             return fixedSimExpr()
-
-
         else:
             previousToken()
             previousToken()
@@ -472,5 +470,3 @@ def fixedArgList():
         previousToken()
         return True
     return False
-
-start()
