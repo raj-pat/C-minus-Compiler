@@ -1,2 +1,7 @@
-/* gg  _t10 */
-int main[5];
+int k;
+void k(void){
+	return 1;
+}
+int main(void) {
+  return 0;
+}

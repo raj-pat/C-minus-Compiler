@@ -32,6 +32,7 @@ def previousToken():
 def start():
     if program():
         nextToken()
+
         if currToken[1] == '$':
             print("ACCEPT")
             return
@@ -470,3 +471,6 @@ def fixedArgList():
         previousToken()
         return True
     return False
+
+
+start()
