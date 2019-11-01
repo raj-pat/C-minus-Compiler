@@ -6,6 +6,11 @@ tokenList.append("$ $")  # todo verify if this needs to be done or not
 tokenIndex = -1
 currToken = ''
 
+stack = []  # use list as a stack
+mainST = {}  # for global variables
+stack.append(mainST)
+currentStackIndex = 0
+
 
 def nextToken():
     global tokenIndex, currToken
@@ -165,6 +170,7 @@ def fixedParList():
 def compoundStmt():
     nextToken()
     if currToken[0] == "{":
+
         if localDeclaration():
             if statementList():
                 nextToken()
