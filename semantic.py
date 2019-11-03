@@ -1,5 +1,5 @@
 # Assume the test file is lexically correct
-import lexer
+import lexer, copy
 
 tokenList = lexer.tokenList
 tokenList.append("$ $")  # todo verify if this needs to be done or not
@@ -7,10 +7,11 @@ tokenIndex = -1
 currToken = ''
 
 stack = []  # use list as a stack
-mainST = {}  # for global variables
-stack.append(mainST)
+# stack[0] will be the gloabal symbol table and would be copied to each table in the list
+# for global variables
+stack.append({})
 currentStackIndex = 0
-
+FST = {}  #to keep track of the functions
 
 # print(tokenList)
 
@@ -88,46 +89,68 @@ def declaration():
                     previousToken()
                     previousToken()
                     previousToken()
-                    varDeclaration()
+                    varMeta = varDeclaration()
+                    stack[currentStackIndex][varMeta[1]] = varMeta
     return
 
 
 def varDeclaration():
     nextToken()
+    retList = []
     if currToken[0] == "Keyword":
         if currToken[1] == "int" or currToken[1] == "void":
+            retList.append(currToken[1])
             nextToken()
             if currToken[0] == "ID":
+                retList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "[":
                     nextToken()
+                    retList.append("arr")  #if array
                     if currToken[0] == "Num":
+                        retList.append(currToken[1])
                         nextToken()
                         if currToken[0] == "]":
                             nextToken()
                             if currToken[0] == ";":
                                 return
                 elif currToken[0] == ";":
-                    return
-    return
+                    return retList
+    return retList
 
 
 def funDeclaration():
     nextToken()
+    global stack, currentStackIndex, FST
+    retList = []  #type specifier, id, params, return type
     if currToken[0] == "Keyword":
         if currToken[1] == "int" or currToken[1] == "void":
+            retList.append(currToken[1])
             nextToken()
             if currToken[0] == "ID":
+                retList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "(":
-                    params()
+                    # add the ST to the table and copy the globals
+                    global currentStackIndex, stack
+                    currentStackIndex += 1
+                    stack.append(copy.deepcopy(stack[0]))
+                    stack[currentStackIndex]['funcName'] = retList[1]
+                    retList.append(params())
                     nextToken()
                     if currToken[0] == ")":
+                        stack[0][retList[1]] = retList
                         compoundStmt()
+                        stack.pop()
+                        currentStackIndex -= 1
+    print(stack)
     return
 
 
+paramList = []
 def params():
+    global paramList
+    paramList = []
     nextToken()
     if currToken[0] == "Keyword":
         if currToken[1] == "void" or currToken[1] == "int":
@@ -140,31 +163,37 @@ def params():
             elif currToken[0] == ")":
                 previousToken()
                 if currToken[1] == "void":
-                    return
-    return
+                    return paramList
+    return paramList
 
 
 def param():
+    tempList = []
+    global paramList
     nextToken()
     if currToken[0] == "Keyword":
         if currToken[1] == "int" or currToken[1] == "void":
+            tempList.append(currToken[1])
             nextToken()
             if currToken[0] == "ID":
+                tempList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "[":
+                    tempList.append("arr")
                     nextToken()
                     if currToken[0] == "]":
-                        return
+                        paramList.append(tempList)
+                        stack[currentStackIndex][tempList[1]] = tempList
                 elif currToken[0] == ")" or currToken[0] == ",":
                     previousToken()
-                    return
-    return
+                    paramList.append(tempList)
+                    stack[currentStackIndex][tempList[1]] = tempList
 
 
 def fixedParList():
     nextToken()
     if currToken[0] == ",":
-        if params():
+        param()
             fixedParList()
     elif currToken[0] == ")":
         previousToken()
@@ -175,10 +204,12 @@ def fixedParList():
 def compoundStmt():
     nextToken()
     if currToken[0] == "{":
+        # print(stack)
         localDeclaration()
         statementList()
         nextToken()
         if currToken[0] == "}":
+            # print(stack)
             return
 
     return
@@ -191,7 +222,8 @@ def localDeclaration():
     if currToken[0] == "Keyword":
         if currToken[1] == "void" or currToken[1] == "int":
             previousToken()
-            varDeclaration()
+            varMeta = varDeclaration()
+            stack[currentStackIndex][varMeta[1]] = varMeta
             localDeclaration()
         elif currToken[1] == "return" or currToken[1] == "if" or currToken[1] == "while":
             previousToken()
@@ -264,10 +296,10 @@ def selectionStmt():
             nextToken()
             if currToken[0] == "(":
                 expression()
-                    nextToken()
-                    if currToken[0] == ")":
-                        statement()
-                        fixedSelStmt()
+                nextToken()
+                if currToken[0] == ")":
+                    statement()
+                    fixedSelStmt()
     return
 
 
@@ -305,15 +337,22 @@ def iterationStmt():
 
 def returnStmt():
     nextToken()
+    global stack, currentStackIndex
     if currToken[0] == "Keyword":
         if currToken[1] == "return":
             nextToken()
             if currToken[0] == ";":
-                return
+                stack[currentStackIndex]['return'] = 'empty'
+                ret = 'empty'
+                stack[0][stack[currentStackIndex]['funcName']].append({"return": ret})
             elif currToken[0] == '(' or currToken[0] == 'ID' or currToken[0] == 'Num':
+                #todo need to determine what is being returned and can check the function type too
                 previousToken()
                 expression()
                 nextToken()
+                stack[currentStackIndex]['return'] = 'something'
+                ret = "something"
+                stack[0][stack[currentStackIndex]['funcName']].append({"return": ret})
                 if currToken[0] == ";":
                     return
 
