@@ -42,8 +42,10 @@ def start():
     nextToken()
     try:
         if currToken[1] == '$':
-            print("ACCEPT")
-            return
+            if 'main' in stack[0]:
+                if stack[0]['main'][0] == 'func':
+                    print("ACCEPT")
+                    exit(0)
         print("REJECT")
     except IndexError:
         print("REJECT")
@@ -94,14 +96,29 @@ def declaration():
     return
 
 
+def validDec(token):
+    global stack, currentStackIndex
+    if token in stack[currentStackIndex]:
+        print("REJECT")
+        exit(0)
+    if token in stack[0]:
+        if stack[0][token][0] == "func":
+            print("REJECT")
+            exit(0)
+
+
 def varDeclaration():
     nextToken()
     retList = []
     if currToken[0] == "Keyword":
-        if currToken[1] == "int" or currToken[1] == "void":
+        if currToken[1] == "void":
+            print("REJECT")
+            exit(0)
+        if currToken[1] == "int":
             retList.append(currToken[1])
             nextToken()
             if currToken[0] == "ID":
+                validDec(currToken[1])
                 retList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "[":
@@ -113,7 +130,7 @@ def varDeclaration():
                         if currToken[0] == "]":
                             nextToken()
                             if currToken[0] == ";":
-                                return
+                                return retList
                 elif currToken[0] == ";":
                     return retList
     return retList
@@ -123,23 +140,27 @@ def funDeclaration():
     nextToken()
     global stack, currentStackIndex, FST
     retList = []  #type specifier, id, params, return type
+    retList.append("func")
     if currToken[0] == "Keyword":
         if currToken[1] == "int" or currToken[1] == "void":
             retList.append(currToken[1])
             nextToken()
             if currToken[0] == "ID":
+                if currToken[1] in stack[currentStackIndex] or currToken[1] in stack[0]:
+                    print("REJECT")
+                    exit(0)
+                # todo validFunc
                 retList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "(":
                     # add the ST to the table and copy the globals
-                    global currentStackIndex, stack
                     currentStackIndex += 1
                     stack.append(copy.deepcopy(stack[0]))
-                    stack[currentStackIndex]['funcName'] = retList[1]
+                    stack[currentStackIndex]['funcName'] = retList[2]
                     retList.append(params())
                     nextToken()
                     if currToken[0] == ")":
-                        stack[0][retList[1]] = retList
+                        stack[0][retList[2]] = retList
                         compoundStmt()
                         stack.pop()
                         currentStackIndex -= 1
@@ -176,6 +197,7 @@ def param():
             tempList.append(currToken[1])
             nextToken()
             if currToken[0] == "ID":
+                validDec(currToken[1])
                 tempList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "[":
@@ -194,7 +216,7 @@ def fixedParList():
     nextToken()
     if currToken[0] == ",":
         param()
-            fixedParList()
+        fixedParList()
     elif currToken[0] == ")":
         previousToken()
         return
@@ -388,8 +410,12 @@ def var():
     follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '=', '==', '>', '>=', ']']
     nextToken()
     if currToken[0] == "ID":
+        if currToken[1] not in stack[currentStackIndex]:
+            print("REJECT")
+            exit(0)
         nextToken()
         if currToken[0] == "[":
+            #todo check the number falls in the range initialized
             expression()
             nextToken()
             if currToken[0] == "]":
@@ -478,6 +504,9 @@ def factor():
 def call():
     nextToken()
     if currToken[0] == "ID":
+        if currToken[1] not in stack[0]:
+            print("REJECT")
+            exit(0)
         nextToken()
         if currToken[0] == "(":
             args()
@@ -499,16 +528,16 @@ def args():
 
 
 def argList():
-    if expression():
-        return fixedArgList()
+    expression()
+    fixedArgList()
     return
 
 
 def fixedArgList():
     nextToken()
     if currToken[0] == ",":
-        if expression():
-            fixedArgList()
+        expression()
+        fixedArgList()
     elif currToken[0] == ')':
         previousToken()
         return
