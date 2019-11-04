@@ -7,7 +7,7 @@ tokenIndex = -1
 currToken = ''
 
 stack = []  # use list as a stack
-# stack[0] will be the gloabal symbol table and would be copied to each table in the list
+# stack[0] will be the global symbol table and would be copied to each table in the list
 # for global variables
 stack.append({})
 currentStackIndex = 0
@@ -138,7 +138,8 @@ def varDeclaration():
 
 def funDeclaration():
     nextToken()
-    global stack, currentStackIndex, FST
+    global stack, currentStackIndex, FST, returnInvoked
+    returnInvoked = False
     retList = []  #type specifier, id, params, return type
     retList.append("func")
     if currToken[0] == "Keyword":
@@ -164,7 +165,12 @@ def funDeclaration():
                         compoundStmt()
                         stack.pop()
                         currentStackIndex -= 1
+
     print(stack)
+    if not returnInvoked:
+        if retList[1] == "int":
+            print("REJECT")
+            exit(0)
     return
 
 
@@ -252,7 +258,7 @@ def localDeclaration():
             return
     elif currToken[0] in follow:
         if currToken[0] == "Keyword":
-            if currToken[1] not in Keywords:  # todo check exception wif index[1] dne
+            if currToken[1] not in Keywords:
                 return
         previousToken()
         return
@@ -265,7 +271,7 @@ def statementList():
 
     nextToken()
     if currToken[0] in first:
-        if currToken[0] == "Keyword":  # todo check exception wif index[1] dne
+        if currToken[0] == "Keyword":
             if currToken[1] not in Keywords:
                 return
         previousToken()
@@ -294,7 +300,7 @@ def statement():
             iterationStmt()
         elif currToken[1] == "return":
             previousToken()
-            returnStmt()
+            returnStmt()  # verify the type returned
     return
 
 
@@ -357,24 +363,27 @@ def iterationStmt():
     return
 
 
+returnInvoked = False
 def returnStmt():
     nextToken()
+    global returnInvoked
+    returnInvoked = True
     global stack, currentStackIndex
     if currToken[0] == "Keyword":
         if currToken[1] == "return":
             nextToken()
             if currToken[0] == ";":
-                stack[currentStackIndex]['return'] = 'empty'
-                ret = 'empty'
-                stack[0][stack[currentStackIndex]['funcName']].append({"return": ret})
+                if stack[0][stack[currentStackIndex]['funcName']][1] != "void":
+                    print("REJECT")
+                    exit(0)
             elif currToken[0] == '(' or currToken[0] == 'ID' or currToken[0] == 'Num':
-                #todo need to determine what is being returned and can check the function type too
+
                 previousToken()
-                expression()
+                retType = expression()  # todo check if it is array rettype=['arr','True'] if returned is arr.
+                if retType[0] != stack[0][stack[currentStackIndex]['funcName']][1] and retType[1] == True:
+                    print("REJECT")
+                    exit(0)
                 nextToken()
-                stack[currentStackIndex]['return'] = 'something'
-                ret = "something"
-                stack[0][stack[currentStackIndex]['funcName']].append({"return": ret})
                 if currToken[0] == ";":
                     return
 
@@ -382,79 +391,108 @@ def returnStmt():
 def expression():
     follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '==', '>', '>=', ']']
     nextToken()
+    retExp = []
+    ret = ""
     if currToken[0] == "ID":
         nextToken()
         if currToken[0] == "=" or currToken[0] == "[":
             previousToken()
             previousToken()
-            var()
+            ret = var()
+            retExp.append(ret)
             nextToken()
             if currToken[0] == "=":
-                expression()
+                if ret != expression()[0]:
+                    print("REJECT")
+                    exit(0)
             elif currToken[0] in follow:  # follow of Factor()
                 previousToken()
-                fixedTerm()
-                fixedAddExp()
-                fixedSimExpr()
+                fixedTerm(ret)
+                fixedAddExp(ret)
+                if fixedSimExpr(ret) == "empty":
+                    retExp.append(True)
+                else:
+                    retExp.append(False)
         else:
             previousToken()
             previousToken()
-            simpleExpression()
+            retExp = simpleExpression()
+            if retExp[1] == "empty":
+                retExp[1] = True
+            else:
+                retExp[1] = False
     elif currToken[0] == '(' or currToken[0] == 'Num':
         previousToken()
-        simpleExpression()
-    return
+        retExp = simpleExpression()
+        if retExp[1] == "empty":
+            retExp[1] = True
+        else:
+            retExp[1] = False
+    return retExp
 
 
 def var():
     follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '=', '==', '>', '>=', ']']
     nextToken()
+    retType = ""
     if currToken[0] == "ID":
         if currToken[1] not in stack[currentStackIndex]:
             print("REJECT")
             exit(0)
+        try:
+            retType = stack[currentStackIndex][currToken[1]][2]
+        except IndexError:
+            retType = stack[currentStackIndex][currToken[1]][0]
         nextToken()
         if currToken[0] == "[":
             #todo check the number falls in the range initialized
             expression()
             nextToken()
             if currToken[0] == "]":
-                return
+                None
         elif currToken[0] in follow:
             previousToken()
-            return
-    return
+            None
+    return retType
 
 
 def simpleExpression():
-    additiveExpression()
-    fixedSimExpr()
-    return
+    ret = additiveExpression()
+    ret1 = fixedSimExpr(ret)
+    return [ret, ret1]
 
 
-def fixedSimExpr():
+def fixedSimExpr(ls):
     relop = ['!=', '<', '<=', '==', '>', '>=']
     nextToken()
     if currToken[0] in relop:
-        additiveExpression()
+        ret = additiveExpression()
+        if ret != ls:
+            print("REJECT")
+            exit(0)
+        return ret
     elif currToken[0] == ')' or currToken[0] == ',' or currToken[0] == ';' or currToken[0] == ']':
         previousToken()
-        return
-    return
+        return "empty"
+    return "empty"
 
 
 def additiveExpression():
-    term()
-    fixedAddExp()
-    return
+    ret = term()
+    fixedAddExp(ret)
+    return ret
 
 
-def fixedAddExp():
+def fixedAddExp(ls):
     follow = ['!=', ')', ',', ';', '<', '<=', '==', '>', '>=', ']']
     nextToken()
     if currToken[0] == '+' or currToken[0] == '-':
-        term()
-        fixedAddExp()
+        ret = term()
+        if ls == ret:
+            fixedAddExp(ret)
+        else:
+            print("REJECT")
+            exit(0)
     elif currToken[0] in follow:
         previousToken()
         return
@@ -462,16 +500,21 @@ def fixedAddExp():
 
 
 def term():
-    factor()
-    fixedTerm()
+    ret = factor()
+    fixedTerm(ret)
+    return ret
 
 
-def fixedTerm():
+def fixedTerm(ls):
     follow = ['!=', ')', ',', ';', '<', '<=', '==', '>', '>=', ']', '+', '-']
     nextToken()
     if currToken[0] == "*" or currToken[0] == "/":
-        factor()
-        fixedTerm()
+        ret = factor()
+        if ret == ls:
+            fixedTerm(ret)
+        else:
+            print("REJECT")
+            exit(0)
     elif currToken[0] in follow:
         previousToken()
         return
@@ -482,38 +525,52 @@ def factor():
     # follow = ['!=' ,')' ,',' ,';' ,'<' ,'<=' ,'==' ,'>','>=', ']', '+', '-','*','/','=']
     nextToken()
     if currToken[0] == "(":
-        expression()
+        ret = expression()  # todo make sure expression returns something
         nextToken()
         if currToken[0] == ")":
-            return
+            return ret
     elif currToken[0] == "ID":
         nextToken()
         if currToken[0] == "(":
             previousToken()
             previousToken()
-            call()
+            return call()
         else:
             previousToken()
             previousToken()
-            var()
+            return var()
     elif currToken[0] == "Num":
-        return
-    return
+        return "int"
+    return "error"
 
 
+argListVar = []
 def call():
+    global argListVar
+    argListVar = []
+    retType = ""
     nextToken()
     if currToken[0] == "ID":
         if currToken[1] not in stack[0]:
             print("REJECT")
             exit(0)
+        funMeta = stack[0][currToken[1]]
+        retType = funMeta[1]
         nextToken()
         if currToken[0] == "(":
             args()
             nextToken()
             if currToken[0] == ")":
-                return
-    return
+                None
+        if len(funMeta[3]) != len(argListVar):
+            print("REJECT")
+            exit(0)
+        for i in range(len(funMeta[3])):
+            if funMeta[3][i][0] != argListVar[i][0]:
+                print("REJECT")
+                exit(0)
+
+    return retType
 
 
 def args():
@@ -528,7 +585,8 @@ def args():
 
 
 def argList():
-    expression()
+    global argListVar
+    argListVar.append(expression())
     fixedArgList()
     return
 
@@ -536,7 +594,8 @@ def argList():
 def fixedArgList():
     nextToken()
     if currToken[0] == ",":
-        expression()
+        global argListVar
+        argListVar.append(expression())
         fixedArgList()
     elif currToken[0] == ')':
         previousToken()

@@ -6,6 +6,7 @@ tokenList.append("$ $")  # todo verify if this needs to be done or not
 tokenIndex = -1
 currToken = ''
 
+print(tokenList)
 
 def nextToken():
     global tokenIndex, currToken
