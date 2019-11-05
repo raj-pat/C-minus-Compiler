@@ -463,11 +463,12 @@ def var():
     follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '=', '==', '>', '>=', ']']
     nextToken()
     retType = ""
+    retId = ''
     if currToken[0] == "ID":
         if currToken[1] not in stack[currentStackIndex]:
             print("REJECT")
             exit(0)
-        id = currToken[1]
+        retId = currToken[1]
         temp = stack[currentStackIndex][currToken[1]]
 
         nextToken()
@@ -476,13 +477,15 @@ def var():
                 # todo check the number falls in the range initialized
                 nextToken()
                 if currToken[0] == 'Num':
-                    arr = id + '[' + currToken[1] + ']'
+                    arr = retId + '[' + currToken[1] + ']'
                     if not arr in stack[currentStackIndex]:
                         print("REJECT")
                         exit(0)
                 else:
                     previousToken()
-                    expression()
+                    if expression()[0] != "int":
+                        print("REJECT")
+                        exit(0)
                 nextToken()
                 if currToken[0] == "]":
                     None
@@ -490,6 +493,7 @@ def var():
         elif currToken[0] in follow:
             previousToken()
             retType = temp[0]
+
     return retType
 
 
