@@ -6,12 +6,12 @@ tokenList.append("$ $")  # todo verify if this needs to be done or not
 tokenIndex = -1
 currToken = ''
 
-stack = []  # use list as a stack
+stack = []  # use list as a symbol table stack
 # stack[0] will be the global symbol table and would be copied to each table in the list
 # for global variables
 stack.append({})
 currentStackIndex = 0
-FST = {}  #to keep track of the functions
+
 
 # print(tokenList)
 
@@ -92,15 +92,25 @@ def declaration():
                     previousToken()
                     previousToken()
                     varMeta = varDeclaration()
-                    stack[currentStackIndex][varMeta[1]] = varMeta
+                    try:
+                        if varMeta[2] == "arr":
+                            for i in range(int(varMeta[3])):
+                                stack[currentStackIndex][varMeta[1] + '[' + str(i) + ']'] = varMeta[:2]
+                        stack[currentStackIndex][varMeta[1]] = [varMeta[0], 'arr']
+                    except IndexError:
+                        stack[currentStackIndex][varMeta[1]] = varMeta
     return
 
 
 def validDec(token):
     global stack, currentStackIndex
     if token in stack[currentStackIndex]:
-        print("REJECT")
-        exit(0)
+        try:
+            if stack[currentStackIndex]['innerScope']:
+                None
+        except KeyError:
+            print("REJECT")
+            exit(0)
     if token in stack[0]:
         if stack[0][token][0] == "func":
             print("REJECT")
@@ -130,15 +140,16 @@ def varDeclaration():
                         if currToken[0] == "]":
                             nextToken()
                             if currToken[0] == ";":
-                                return retList
+                                None
                 elif currToken[0] == ";":
-                    return retList
+                    None
     return retList
 
 
+funcStack = []
 def funDeclaration():
     nextToken()
-    global stack, currentStackIndex, FST, returnInvoked
+    global stack, currentStackIndex, FST, returnInvoked, funcStack
     returnInvoked = False
     retList = []  #type specifier, id, params, return type
     retList.append("func")
@@ -157,14 +168,17 @@ def funDeclaration():
                     # add the ST to the table and copy the globals
                     currentStackIndex += 1
                     stack.append(copy.deepcopy(stack[0]))
+                    stack[currentStackIndex]['innerScope'] = False
                     stack[currentStackIndex]['funcName'] = retList[2]
                     retList.append(params())
+                    funcStack.append(retList[2])
                     nextToken()
                     if currToken[0] == ")":
                         stack[0][retList[2]] = retList
-                        compoundStmt()
+                        compoundStmt(True)
                         stack.pop()
                         currentStackIndex -= 1
+                        funcStack.pop()
 
     print(stack)
     if not returnInvoked:
@@ -229,15 +243,24 @@ def fixedParList():
     return
 
 
-def compoundStmt():
+def compoundStmt(newFunction=False):
     nextToken()
+    global funcStack, currentStackIndex
+    if not newFunction:  # for {} in a method
+        stack.append(copy.deepcopy(stack[currentStackIndex]))
+        stack[currentStackIndex]['funcName'] = funcStack[len(funcStack) - 1]
+        stack[currentStackIndex]['innerScope'] = True
+        currentStackIndex += 1
+
     if currToken[0] == "{":
         # print(stack)
         localDeclaration()
         statementList()
         nextToken()
         if currToken[0] == "}":
-            # print(stack)
+            if not newFunction:  # for {} in a method
+                stack.pop()
+                currentStackIndex -= 1
             return
 
     return
@@ -247,11 +270,16 @@ def localDeclaration():
     follow = ['(', ';', 'ID', 'Num', '{', 'Keyword', '}']
     Keywords = ['if', 'return', 'while']
     nextToken()
-    if currToken[0] == "Keyword":
+    if currToken[0] == "Keyword":  #todo no void variables
         if currToken[1] == "void" or currToken[1] == "int":
             previousToken()
             varMeta = varDeclaration()
-            stack[currentStackIndex][varMeta[1]] = varMeta
+            try:
+                if varMeta[2] == "arr":
+                    for i in range(int(varMeta[3])):
+                        stack[currentStackIndex][varMeta[1] + '[' + str(i) + ']'] = varMeta[:2]
+            except IndexError:
+                stack[currentStackIndex][varMeta[1]] = varMeta
             localDeclaration()
         elif currToken[1] == "return" or currToken[1] == "if" or currToken[1] == "while":
             previousToken()
@@ -439,20 +467,29 @@ def var():
         if currToken[1] not in stack[currentStackIndex]:
             print("REJECT")
             exit(0)
-        try:
-            retType = stack[currentStackIndex][currToken[1]][2]
-        except IndexError:
-            retType = stack[currentStackIndex][currToken[1]][0]
+        id = currToken[1]
+        temp = stack[currentStackIndex][currToken[1]]
+
         nextToken()
-        if currToken[0] == "[":
-            #todo check the number falls in the range initialized
-            expression()
-            nextToken()
-            if currToken[0] == "]":
-                None
+        if temp[1] == 'arr':
+            if currToken[0] == "[":
+                # todo check the number falls in the range initialized
+                nextToken()
+                if currToken[0] == 'Num':
+                    arr = id + '[' + currToken[1] + ']'
+                    if not arr in stack[currentStackIndex]:
+                        print("REJECT")
+                        exit(0)
+                else:
+                    previousToken()
+                    expression()
+                nextToken()
+                if currToken[0] == "]":
+                    None
+            retType = temp[0]
         elif currToken[0] in follow:
             previousToken()
-            None
+            retType = temp[0]
     return retType
 
 
