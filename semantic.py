@@ -92,13 +92,7 @@ def declaration():
                     previousToken()
                     previousToken()
                     varMeta = varDeclaration()
-                    try:
-                        if varMeta[2] == "arr":
-                            for i in range(int(varMeta[3])):
-                                stack[currentStackIndex][varMeta[1] + '[' + str(i) + ']'] = varMeta[:2]
-                        stack[currentStackIndex][varMeta[1]] = [varMeta[0], 'arr']
-                    except IndexError:
-                        stack[currentStackIndex][varMeta[1]] = varMeta
+                    stack[currentStackIndex][varMeta[1]] = varMeta
     return
 
 
@@ -110,6 +104,7 @@ def validDec(token):
                 None
         except KeyError:
             print("REJECT")
+
             exit(0)
     if token in stack[0]:
         if stack[0][token][0] == "func":
@@ -180,7 +175,7 @@ def funDeclaration():
                         currentStackIndex -= 1
                         funcStack.pop()
 
-    print(stack)
+    # print(stack)
     if not returnInvoked:
         if retList[1] == "int":
             print("REJECT")
@@ -194,17 +189,20 @@ def params():
     paramList = []
     nextToken()
     if currToken[0] == "Keyword":
-        if currToken[1] == "void" or currToken[1] == "int":
+        if currToken[1] == "void":
+            nextToken()
+            if currToken[0] == ")":
+                previousToken()
+                if currToken[1] == "void":
+                    return paramList
+        elif currToken[1] == "int":
             nextToken()
             if currToken[0] == "ID":
                 previousToken()
                 previousToken()
                 param()
                 fixedParList()
-            elif currToken[0] == ")":
-                previousToken()
-                if currToken[1] == "void":
-                    return paramList
+
     return paramList
 
 
@@ -213,6 +211,7 @@ def param():
     global paramList
     nextToken()
     if currToken[0] == "Keyword":
+
         if currToken[1] == "int" or currToken[1] == "void":
             tempList.append(currToken[1])
             nextToken()
@@ -274,12 +273,7 @@ def localDeclaration():
         if currToken[1] == "void" or currToken[1] == "int":
             previousToken()
             varMeta = varDeclaration()
-            try:
-                if varMeta[2] == "arr":
-                    for i in range(int(varMeta[3])):
-                        stack[currentStackIndex][varMeta[1] + '[' + str(i) + ']'] = varMeta[:2]
-            except IndexError:
-                stack[currentStackIndex][varMeta[1]] = varMeta
+            stack[currentStackIndex][varMeta[1]] = varMeta
             localDeclaration()
         elif currToken[1] == "return" or currToken[1] == "if" or currToken[1] == "while":
             previousToken()
@@ -419,7 +413,6 @@ def returnStmt():
 def expression():
     follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '==', '>', '>=', ']']
     nextToken()
-    retExp = []
     ret = ""
     if currToken[0] == "ID":
         nextToken()
@@ -427,36 +420,28 @@ def expression():
             previousToken()
             previousToken()
             ret = var()
-            retExp.append(ret)
             nextToken()
             if currToken[0] == "=":
-                if ret != expression()[0]:
+                if ret != expression():
                     print("REJECT")
                     exit(0)
             elif currToken[0] in follow:  # follow of Factor()
                 previousToken()
                 fixedTerm(ret)
                 fixedAddExp(ret)
-                if fixedSimExpr(ret) == "empty":
-                    retExp.append(True)
-                else:
-                    retExp.append(False)
+
         else:
             previousToken()
             previousToken()
-            retExp = simpleExpression()
-            if retExp[1] == "empty":
-                retExp[1] = True
-            else:
-                retExp[1] = False
+            ret = simpleExpression()
     elif currToken[0] == '(' or currToken[0] == 'Num':
         previousToken()
-        retExp = simpleExpression()
-        if retExp[1] == "empty":
-            retExp[1] = True
-        else:
-            retExp[1] = False
-    return retExp
+        ret = simpleExpression()
+        # if retExp[1] == "empty":
+        #     retExp[1] = True
+        # else:
+        #     retExp[1] = False
+    return ret
 
 
 def var():
@@ -465,34 +450,31 @@ def var():
     retType = ""
     retId = ''
     if currToken[0] == "ID":
+
         if currToken[1] not in stack[currentStackIndex]:
             print("REJECT")
             exit(0)
         retId = currToken[1]
         temp = stack[currentStackIndex][currToken[1]]
-
         nextToken()
-        if temp[1] == 'arr':
-            if currToken[0] == "[":
-                # todo check the number falls in the range initialized
-                nextToken()
-                if currToken[0] == 'Num':
-                    arr = retId + '[' + currToken[1] + ']'
-                    if not arr in stack[currentStackIndex]:
+        try:
+            if temp[2] == 'arr':
+                if currToken[0] == "[":
+                    # nextToken()
+                    if expression() != "int":
                         print("REJECT")
                         exit(0)
-                else:
-                    previousToken()
-                    if expression()[0] != "int":
-                        print("REJECT")
-                        exit(0)
-                nextToken()
-                if currToken[0] == "]":
-                    None
-            retType = temp[0]
-        elif currToken[0] in follow:
-            previousToken()
-            retType = temp[0]
+                    nextToken()
+                    if currToken[0] == "]":
+                        None
+                retType = temp[0]
+        except IndexError:
+            if currToken[0] in follow:
+                previousToken()
+                retType = temp[0]
+            else:
+                print("REJECT")
+                exit(0)
 
     return retType
 
@@ -500,7 +482,7 @@ def var():
 def simpleExpression():
     ret = additiveExpression()
     ret1 = fixedSimExpr(ret)
-    return [ret, ret1]
+    return ret
 
 
 def fixedSimExpr(ls):
@@ -529,7 +511,7 @@ def fixedAddExp(ls):
     nextToken()
     if currToken[0] == '+' or currToken[0] == '-':
         ret = term()
-        if ls == ret:
+        if ls == ret and ls == 'int':
             fixedAddExp(ret)
         else:
             print("REJECT")
@@ -607,7 +589,7 @@ def call():
             print("REJECT")
             exit(0)
         for i in range(len(funMeta[3])):
-            if funMeta[3][i][0] != argListVar[i][0]:
+            if funMeta[3][i][0] != argListVar[i]:
                 print("REJECT")
                 exit(0)
 
