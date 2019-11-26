@@ -1,19 +1,8 @@
-int o;
-int qwe[20];
-int fun1(int a, int b){
-
-	return 5;
+int foo(int a, int b) {
+        return a + b;
 }
-void main(int k){
-    int f;
-    o+f*f/f/o+fun1(3,4);
-    fun1(qwe[19],fun1(1,2));
 
-    {
-        int k;
-    }
+void main(void) {
+        int b[8];
+        b[2] = foo(2, 2);
 }
-/*int main(int k)
-{
-return 0;}
-*/

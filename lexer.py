@@ -35,7 +35,8 @@ def lexer(filename):
                             if comment is False:
                                 printChar = deuceChars.strip()
                                 if (printChar == '!'):
-                                    print("Error: " + printChar)
+                                    # print("Error: " + printChar)
+                                    None
                                 elif (printChar != ''):
                                     tokenList.append(printChar)  # prints a single character
                             deuceChars = ''
@@ -67,7 +68,8 @@ def lexer(filename):
                                 if comment is False:
                                     printChar = deuceChars[0].strip()
                                     if printChar == '!':
-                                        print('Error: ' + printChar)
+                                        # print('Error: ' + printChar)
+                                        None
                                     elif (printChar != ''):
                                         tokenList.append(printChar)
                                 deuceChars = deuceChars[1]
@@ -76,19 +78,22 @@ def lexer(filename):
                                 if comment is False:
                                     printChar = deuceChars.strip()
                                     if (printChar == '!'):
-                                        print("Error: " + printChar)
+                                        # print("Error: " + printChar)
+                                        None
                                     elif (printChar != ''):
                                         tokenList.append(printChar)
                                 deuceChars = ''
                             if comment is False:
                                 printChar = char.strip()
                                 if (printChar == '!'):
-                                    print('Error: ' + printChar)
+                                    # print('Error: ' + printChar)
+                                    None
                                 elif (printChar != ''):
                                     tokenList.append(char.strip())
                 else:
                     if comment is False:
-                        print('Error: ' + currWord + char)
+                        # print('Error: ' + currWord + char)
+                        None
                     currWord = ''
 
 

@@ -1,6 +1,6 @@
-# void main(void)    /* gg _t0 */
-# {
-# int q;
-# int b;
-#         b = b + q;
-# }
+ void main(void)    /* gg _t0 */
+ {
+ int q;
+ int b;
+ }
+ b = b + q;
