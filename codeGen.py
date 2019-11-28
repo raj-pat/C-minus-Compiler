@@ -54,9 +54,9 @@ def start():
                 if stack[0]['main'][0] == 'func':
                     print("ACCEPT")
                     return
-        print("REJECT")
+        print("REJECT1")
     except IndexError:
-        print("REJECT")
+        print("REJECT2")
 
 
 def program():
@@ -122,12 +122,12 @@ def validDec(token):
             if stack[currentStackIndex]['innerScope']:
                 None
         except KeyError:
-            print("REJECT")
+            print("REJECT3")
 
             exit(0)
     if token in stack[0]:
         if stack[0][token][0] == "func":
-            print("REJECT")
+            print("REJECT4")
             exit(0)
 
 
@@ -136,7 +136,7 @@ def varDeclaration():
     retList = []
     if currToken[0] == "Keyword":
         if currToken[1] == "void":
-            print("REJECT")
+            print("REJECT5")
             exit(0)
         if currToken[1] == "int":
             retList.append(currToken[1])
@@ -167,6 +167,7 @@ funcStack = []
 def funDeclaration():
     global stack, currentStackIndex, FST, returnInvoked, funcStack, codegen
     codeline = [""] * 4
+    codeline2 = [''] * 4
     codeline[0] = "func"
     codegen.append(codeline)
     nextToken()
@@ -180,10 +181,7 @@ def funDeclaration():
             nextToken()
             if currToken[0] == "ID":
                 codeline[3] = currToken[1]
-                if currToken[1] in stack[currentStackIndex] or currToken[1] in stack[0]:
-                    print("REJECT")
-                    exit(0)
-
+                codeline2[3] = currToken[1]
                 retList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "(":
@@ -210,8 +208,12 @@ def funDeclaration():
                         funcStack.pop()
     if not returnInvoked:
         if retList[1] == "int":
-            print("REJECT")
+            print("REJECT7")
             exit(0)
+
+    codeline2[0] = "end"
+    codeline2[1] = "func"
+    codegen.append(codeline2)
     return
 
 
@@ -243,7 +245,6 @@ def param():
     global paramList
     nextToken()
     if currToken[0] == "Keyword":
-
         if currToken[1] == "int" or currToken[1] == "void":
             tempList.append(currToken[1])
             nextToken()
@@ -282,7 +283,6 @@ def compoundStmt(newFunction=False):
         stack[currentStackIndex]['funcName'] = funcStack[len(funcStack) - 1]
         stack[currentStackIndex]['innerScope'] = True
         currentStackIndex += 1
-
     if currToken[0] == "{":
         # print(stack)
         localDeclaration()
@@ -384,15 +384,38 @@ def expressionStmt():
 
 def selectionStmt():
     nextToken()
+    relop = {'!=': "jneq", '<': "jlt", '<=': "jlte", '==': "jeq", '>': 'jgt', '>=': 'jgte'}
+    global codegen, currTemp
+
+    jmpLine = [""] * 4
+    relOpLine = [""] * 4
+    jmpLine[0] = "jmp"
     if currToken[0] == "Keyword":
         if currToken[1] == "if":
             nextToken()
             if currToken[0] == "(":
-                expression()
+                retExp = expression()
+                if retExp[0] == None:
+                    genTemp()
+                    codegen.append(["comp", 0, retExp[1], currTemp])
+                    codegen.append(["jlt", currTemp, "", len(codegen) + 2])
+                    codegen.append(jmpLine)
+                else:
+                    codegen.append([relop[retExp[0]], retExp[1], "", len(codegen) + 2])
+                    codegen.append(jmpLine)
                 nextToken()
                 if currToken[0] == ")":
                     statement()
-                    fixedSelStmt()
+                    jmpElse = [''] * 4
+                    jmpElse[0] = 'jmp'
+                    codegen.append(jmpElse)
+                    elsePart = fixedSelStmt()
+                    if elsePart == None:
+                        jmpLine[3] = len(codegen)
+
+                    else:
+                        jmpLine[3] = elsePart
+                    jmpElse[3] = len(codegen)
     return
 
 
@@ -400,19 +423,21 @@ def fixedSelStmt():
     follow = ['(', ';', 'ID', 'Num', 'Keyword', '{', '}']
     Keywords = ['if', 'return', 'while']
     nextToken()
+    ret = None
     if currToken[0] == "Keyword":
         if currToken[1] == "else":
+            ret = len(codegen)
             statement()
         elif currToken[1] in Keywords:
             previousToken()
-            return
+
     elif currToken[0] in follow:
         if currToken[0] == "Keyword":
             if currToken[1] not in Keywords:
-                return
+                return None
         previousToken()
-        return
-    return
+        return None
+    return ret
 
 
 def iterationStmt():
@@ -433,21 +458,22 @@ def returnStmt():
     nextToken()
     global returnInvoked
     returnInvoked = True
-    global stack, currentStackIndex
+    global stack, currentStackIndex, codegen, currTemp
+    codeline = [""] * 4
     if currToken[0] == "Keyword":
         if currToken[1] == "return":
+            codeline[0] = "return"
             nextToken()
             if currToken[0] == ";":
+                codegen.append(codeline)
                 if stack[0][stack[currentStackIndex]['funcName']][1] != "void":
-                    print("REJECT")
+                    print("REJECT8")
                     exit(0)
             elif currToken[0] == '(' or currToken[0] == 'ID' or currToken[0] == 'Num':
-
                 previousToken()
-                retType = expression()  # todo check if it is array rettype=['arr','True'] if returned is arr.
-                if retType[0] != stack[0][stack[currentStackIndex]['funcName']][1] and retType[1] == True:
-                    print("REJECT")
-                    exit(0)
+                retType = expression()
+                codeline[3] = retType[1]
+                codegen.append(codeline)
                 nextToken()
                 if currToken[0] == ";":
                     return
@@ -455,6 +481,8 @@ def returnStmt():
 
 def expression():
     follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '==', '>', '>=', ']']
+    global codegen, currTemp
+    codeline = [""] * 4
     nextToken()
     ret = ""
     if currToken[0] == "ID":
@@ -465,13 +493,22 @@ def expression():
             ret = var()
             nextToken()
             if currToken[0] == "=":
-                if ret != expression():
-                    print("REJECT")
-                    exit(0)
+                codeline[0] = "assign"
+                codeline[3] = ret
+                retExp = expression()  # todo add below the return
+                codeline[1] = retExp[1]
+                codegen.append(codeline)
+                return ret
             elif currToken[0] in follow:  # follow of Factor()
                 previousToken()
-                fixedTerm(ret)
-                fixedAddExp(ret)
+                retFix = fixedTerm(ret)
+                if retFix == None:
+                    retFix = ret
+                retAdd = fixedAddExp(retFix)
+                if retAdd == None:
+                    retAdd = retFix
+                retOp = fixedSimExpr(retAdd)
+                return retOp
         else:
             previousToken()
             previousToken()
@@ -481,19 +518,14 @@ def expression():
         ret = simpleExpression()
     return ret
 
-
 def var():
     global currTemp, codegen
-
     follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '=', '==', '>', '>=', ']']
     nextToken()
     retType = ""
     retId = ''
     if currToken[0] == "ID":
 
-        if currToken[1] not in stack[currentStackIndex]:
-            print("REJECT")
-            exit(0)
         retId = currToken[1]
         temp = stack[currentStackIndex][currToken[1]]
         nextToken()
@@ -504,14 +536,19 @@ def var():
                     codeline = [""] * 4
                     codeline[0] = "disp"
                     codeline[1] = retId
-                    codeline[2] = "todo"
+                    codeline[2] = "todo"  #todo here
                     genTemp()
                     codeline[3] = currTemp
                     codegen.append(codeline)
+                    # print(codeline)
                     retId = currTemp
-                    if expression() != "int":  # todo convert to a number somehow
-                        print("REJECT")
-                        exit(0)
+                    retExp = expression()
+                    try:
+                        codeline[2] = int(retExp[1]) * 4
+                    except:
+                        codeline2 = [""] * 4
+                        codeline2[0] = "mul"
+                        codeline2[1] = retExp[1]
                     nextToken()
                     if currToken[0] == "]":
                         None
@@ -520,76 +557,102 @@ def var():
             if currToken[0] in follow:
                 previousToken()
                 return retId
-            else:
-                print("REJECT")
-                exit(0)
-
-
-
 
 def simpleExpression():
     ret = additiveExpression()
     ret1 = fixedSimExpr(ret)
-    return ret
+    return ret1
 
 
 def fixedSimExpr(ls):
+    global codegen, currTemp
+    codeline = [""] * 4
+    codeline[0] = "comp"
+    codeline[1] = ls
     relop = ['!=', '<', '<=', '==', '>', '>=']
     nextToken()
+    rel = ""
     if currToken[0] in relop:
+        rel = currToken[0]
         ret = additiveExpression()
-        if ret != ls:
-            print("REJECT")
-            exit(0)
-        return ret
+        codeline[2] = ret
+        genTemp()
+        codeline[3] = currTemp
+        codegen.append(codeline)
     elif currToken[0] == ')' or currToken[0] == ',' or currToken[0] == ';' or currToken[0] == ']':
         previousToken()
-        return "empty"
-    return "empty"
+        return [None, ls]
+    return [rel, currTemp]
 
 
 def additiveExpression():
     ret = term()
-    fixedAddExp(ret)
-    return ret
+    retFix = fixedAddExp(ret)
+    if retFix == None:
+        return ret
+    else:
+        return retFix
+
 
 
 def fixedAddExp(ls):
     follow = ['!=', ')', ',', ';', '<', '<=', '==', '>', '>=', ']']
+    global codegen, currTemp
+    codeline = [''] * 4
     nextToken()
     if currToken[0] == '+' or currToken[0] == '-':
-        ret = term()
-        if ls == ret and ls == 'int':
-            fixedAddExp(ret)
+        if currToken[0] == "+":
+            codeline[0] = "add"
         else:
-            print("REJECT")
-            exit(0)
+            codeline[0] = "sub"
+        codeline[1] = ls
+        ret = term()
+        codeline[2] = ret
+        genTemp()
+        codeline[3] = currTemp
+        codegen.append(codeline)
+        fixedAddExp(currTemp)
     elif currToken[0] in follow:
         previousToken()
-        return
-    return
+        return None
+    return currTemp
 
 
 def term():
     ret = factor()
-    fixedTerm(ret)
-    return ret
+    k = fixedTerm(ret)
+    if k == "n":
+        # print("ret " + ret)
+        return ret
+    else:
+        # print("ret " + k)
+        return k
+
 
 
 def fixedTerm(ls):
     follow = ['!=', ')', ',', ';', '<', '<=', '==', '>', '>=', ']', '+', '-']
+    global codegen, currTemp
+    codeline = [""] *4
+
     nextToken()
     if currToken[0] == "*" or currToken[0] == "/":
-        ret = factor()
-        if ret == ls:
-            fixedTerm(ret)
+        if currToken[0] == '*':
+            codeline[0] = "mul"
         else:
-            print("REJECT")
-            exit(0)
+            codeline[0] = "div"
+        ret = factor()
+        codeline[1] = ls
+        codeline[2] = ret
+        genTemp()
+        codeline[3] = currTemp
+
+        codegen.append(codeline)
+        fixedTerm(currTemp)
     elif currToken[0] in follow:
         previousToken()
-        return
-    return
+        return "n"
+    return currTemp
 
 
 def factor():
@@ -614,17 +677,20 @@ def factor():
         return currToken[1]
     return "error"
 
-
 argListVar = []
+
 def call():
-    global argListVar
+    global argListVar, codegen, currTemp
+    codeline = [""] * 4
+    codegen.append(codeline)
+
+    codeline[0] = "call"
     argListVar = []
     retType = ""
     nextToken()
     if currToken[0] == "ID":
-        if currToken[1] not in stack[0]:
-            print("REJECT")
-            exit(0)
+        codeline[1] = currToken[1]
+
         funMeta = stack[0][currToken[1]]
         retType = funMeta[1]
         nextToken()
@@ -633,15 +699,11 @@ def call():
             nextToken()
             if currToken[0] == ")":
                 None
-        if len(funMeta[3]) != len(argListVar):
-            print("REJECT")
-            exit(0)
-        for i in range(len(funMeta[3])):
-            if funMeta[3][i][0] != argListVar[i]:
-                print("REJECT")
-                exit(0)
+        codeline[2] = len(argListVar)
+        genTemp()
+        codeline[3] = currTemp
 
-    return retType
+    return currTemp
 
 
 def args():
@@ -675,5 +737,8 @@ def fixedArgList():
 
 
 start()
+i = 0
 for lis in codegen:
+    print(i, end="")
+    i +=1
     print(lis)
