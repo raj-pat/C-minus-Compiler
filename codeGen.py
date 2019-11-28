@@ -14,6 +14,14 @@ currentStackIndex = 0
 
 # print(tokenList)
 codegen = []
+tempNum = -1
+currTemp = ""
+
+
+def genTemp():
+    global currTemp, tempNum
+    tempNum += 1
+    currTemp = "temp" + str(tempNum)
 
 def nextToken():
     global tokenIndex, currToken
@@ -464,7 +472,6 @@ def expression():
                 previousToken()
                 fixedTerm(ret)
                 fixedAddExp(ret)
-
         else:
             previousToken()
             previousToken()
@@ -472,14 +479,12 @@ def expression():
     elif currToken[0] == '(' or currToken[0] == 'Num':
         previousToken()
         ret = simpleExpression()
-        # if retExp[1] == "empty":
-        #     retExp[1] = True
-        # else:
-        #     retExp[1] = False
     return ret
 
 
 def var():
+    global currTemp, codegen
+
     follow = ['!=', ')', '*', '+', ',', '-', '/', ';', '<', '<=', '=', '==', '>', '>=', ']']
     nextToken()
     retType = ""
@@ -496,22 +501,30 @@ def var():
             if temp[2] == 'arr':
                 if currToken[0] == "[":
                     # nextToken()
-                    if expression() != "int":
+                    codeline = [""] * 4
+                    codeline[0] = "disp"
+                    codeline[1] = retId
+                    codeline[2] = "todo"
+                    genTemp()
+                    codeline[3] = currTemp
+                    codegen.append(codeline)
+                    retId = currTemp
+                    if expression() != "int":  # todo convert to a number somehow
                         print("REJECT")
                         exit(0)
                     nextToken()
                     if currToken[0] == "]":
                         None
-                retType = temp[0]
+                return retId
         except IndexError:
             if currToken[0] in follow:
                 previousToken()
-                retType = temp[0]
+                return retId
             else:
                 print("REJECT")
                 exit(0)
 
-    return retType
+
 
 
 def simpleExpression():
@@ -598,7 +611,7 @@ def factor():
             previousToken()
             return var()
     elif currToken[0] == "Num":
-        return "int"
+        return currToken[1]
     return "error"
 
 
