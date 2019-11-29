@@ -511,7 +511,6 @@ def var():
     retType = ""
     retId = ''
     if currToken[0] == "ID":
-
         retId = currToken[1]
         temp = stack[currentStackIndex][currToken[1]]
         nextToken()
@@ -607,7 +606,7 @@ def fixedAddExp(ls):
 def term():
     ret = factor()
     k = fixedTerm(ret)
-    if k == "n":
+    if k == None:
         # print("ret " + ret)
         return ret
     else:
@@ -637,7 +636,7 @@ def fixedTerm(ls):
         fixedTerm(currTemp)
     elif currToken[0] in follow:
         previousToken()
-        return "n"
+        return None
     return currTemp
 
 
@@ -648,7 +647,7 @@ def factor():
         ret = expression()  # todo make sure expression returns something
         nextToken()
         if currToken[0] == ")":
-            return ret
+            return ret[1]
     elif currToken[0] == "ID":
         nextToken()
         if currToken[0] == "(":
