@@ -48,16 +48,11 @@ def previousToken():
 def start():
     program()
     nextToken()
-    try:
-        if currToken[1] == '$':
-            if 'main' in stack[0]:
-                if stack[0]['main'][0] == 'func':
-                    print("ACCEPT")
-                    return
-        print("REJECT1")
-    except IndexError:
-        print("REJECT2")
-
+    if currToken[1] == '$':
+        if 'main' in stack[0]:
+            if stack[0]['main'][0] == 'func':
+                print("ACCEPT")
+                return
 
 def program():
     declarationList()
@@ -109,41 +104,23 @@ def declaration():
                         codeline[1] = 4
                     codeline[3] = varMeta[1]
                     codegen.append(codeline)
-                    print(codeline)
+                    # print(codeline)
                     stack[currentStackIndex][varMeta[1]] = varMeta
 
     return
-
-
-def validDec(token):
-    global stack, currentStackIndex
-    if token in stack[currentStackIndex]:
-        try:
-            if stack[currentStackIndex]['innerScope']:
-                None
-        except KeyError:
-            print("REJECT3")
-
-            exit(0)
-    if token in stack[0]:
-        if stack[0][token][0] == "func":
-            print("REJECT4")
-            exit(0)
 
 
 def varDeclaration():
     nextToken()
     retList = []
     if currToken[0] == "Keyword":
-        if currToken[1] == "void":
-            print("REJECT5")
-            exit(0)
+
         if currToken[1] == "int":
             retList.append(currToken[1])
             nextToken()
             if currToken[0] == "ID":
 
-                validDec(currToken[1])
+
                 retList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "[":
@@ -206,10 +183,6 @@ def funDeclaration():
                         stack.pop()
                         currentStackIndex -= 1
                         funcStack.pop()
-    if not returnInvoked:
-        if retList[1] == "int":
-            print("REJECT7")
-            exit(0)
 
     codeline2[0] = "end"
     codeline2[1] = "func"
@@ -249,7 +222,6 @@ def param():
             tempList.append(currToken[1])
             nextToken()
             if currToken[0] == "ID":
-                validDec(currToken[1])
                 tempList.append(currToken[1])
                 nextToken()
                 if currToken[0] == "[":
@@ -262,7 +234,6 @@ def param():
                     previousToken()
                     paramList.append(tempList)
                     stack[currentStackIndex][tempList[1]] = tempList
-
 
 def fixedParList():
     nextToken()
@@ -307,7 +278,7 @@ def localDeclaration():
         if currToken[1] == "void" or currToken[1] == "int":
             previousToken()
             varMeta = varDeclaration()
-            print(varMeta)
+
             codeline[3] = varMeta[1]
             codeline[0] = "alloc"
             try:
@@ -753,7 +724,11 @@ def fixedArgList():
 
 start()
 i = 0
+# print("{: >20} {: >20} {: >20}".format(*row))
 for lis in codegen:
-    print(i, end="")
-    i +=1
-    print(lis)
+    print(str(i) + " " * (5 - len(str(i))), end="")
+    print(str(lis[0]) + " " * (12 - len(str(lis[0]))), end="")
+    print(str(lis[1]) + " " * (12 - len(str(lis[1]))), end="")
+    print(str(lis[2]) + " " * (12 - len(str(lis[2]))), end="")
+    print(str(lis[3]) + " " * (12 - len(str(lis[3]))))
+    i += 1
