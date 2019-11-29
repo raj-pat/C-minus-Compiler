@@ -442,14 +442,32 @@ def fixedSelStmt():
 
 def iterationStmt():
     nextToken()
+    global codegen, currTemp
+    relop = {'!=': "jneq", '<': "jlt", '<=': "jlte", '==': "jeq", '>': 'jgt', '>=': 'jgte'}
+    jmpLine = [''] * 4
+    goUpLine = [''] * 4
+    goUpLine[0] = 'jmp'
+    goUpLine[3] = len(codegen)
+    jmpLine[0] = 'jmp'
     if currToken[0] == "Keyword":
         if currToken[1] == "while":
             nextToken()
             if currToken[0] == "(":
-                expression()
+                retExp = expression()
+                if retExp[0] == None:
+                    genTemp()
+                    codegen.append(["comp", 0, retExp[1], currTemp])
+                    codegen.append(["jlt", currTemp, "", len(codegen) + 2])
+                    codegen.append(jmpLine)
+                else:
+                    codegen.append([relop[retExp[0]], retExp[1], "", len(codegen) + 2])
+                    codegen.append(jmpLine)
+
                 nextToken()
                 if currToken[0] == ")":
                     statement()
+                    codegen.append(goUpLine)
+    jmpLine[3] = len(codegen)
     return
 
 
@@ -466,9 +484,6 @@ def returnStmt():
             nextToken()
             if currToken[0] == ";":
                 codegen.append(codeline)
-                if stack[0][stack[currentStackIndex]['funcName']][1] != "void":
-                    print("REJECT8")
-                    exit(0)
             elif currToken[0] == '(' or currToken[0] == 'ID' or currToken[0] == 'Num':
                 previousToken()
                 retType = expression()
